@@ -18,15 +18,19 @@ function isValidPhone($phone) {
 
 // Check if user is logged in
 function isLoggedIn() {
-    return isset($_SESSION['admin_id']) && !empty($_SESSION['admin_id']);
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    return isset($_SESSION['user_id']) || isset($_SESSION['admin_id']);
 }
 
 // Redirect with message
 function redirectWith($url, $message = '', $type = 'info') {
-    if (!empty($message)) {
-        $_SESSION['message'] = $message;
-        $_SESSION['message_type'] = $type;
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
+    $_SESSION['message'] = $message;
+    $_SESSION['message_type'] = $type;
     header("Location: $url");
     exit();
 }

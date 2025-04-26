@@ -21,6 +21,39 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
     }
 }
 
+// Handle registration status changes
+if (isset($_GET['action']) && isset($_GET['id'])) {
+    $reg_id = (int)$_GET['id'];
+    
+    switch ($_GET['action']) {
+        case 'confirm':
+            if (confirmWaitlistedRegistration($conn, $reg_id)) {
+                redirectWith('registrations.php', 'Registration confirmed successfully.', 'success');
+            } else {
+                redirectWith('registrations.php', 'Failed to confirm registration.', 'danger');
+            }
+            break;
+            
+        case 'cancel':
+            if (cancelRegistration($conn, $reg_id)) {
+                redirectWith('registrations.php', 'Registration cancelled successfully.', 'success');
+            } else {
+                redirectWith('registrations.php', 'Failed to cancel registration.', 'danger');
+            }
+            break;
+            
+        case 'delete':
+            $stmt = $conn->prepare("DELETE FROM registrations WHERE reg_id = ?");
+            $stmt->bind_param("i", $reg_id);
+            if ($stmt->execute()) {
+                redirectWith('registrations.php', 'Registration deleted successfully.', 'success');
+            } else {
+                redirectWith('registrations.php', 'Failed to delete registration.', 'danger');
+            }
+            break;
+    }
+}
+
 // Get event filter
 $event_filter = isset($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
@@ -173,6 +206,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                             <th>Event</th>
                             <th>Email</th>
                             <th>Phone</th>
+                            <th>Status</th>
                             <th>Registration Date</th>
                             <th>Actions</th>
                         </tr>
@@ -189,14 +223,44 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                                     </small>
                                 </td>
                                 <td><?php echo htmlspecialchars($reg['email']); ?></td>
-                                <td><?php echo htmlspecialchars($reg['phone']); ?></td>
+                                <td><?php echo formatPhoneNumber($reg['phone']); ?></td>
+                                <td>
+                                    <?php
+                                    $status_class = [
+                                        'confirmed' => 'success',
+                                        'waitlisted' => 'warning',
+                                        'cancelled' => 'danger'
+                                    ][$reg['status']] ?? 'secondary';
+                                    ?>
+                                    <span class="badge bg-<?php echo $status_class; ?>">
+                                        <?php echo ucfirst($reg['status']); ?>
+                                    </span>
+                                </td>
                                 <td><?php echo formatDate($reg['registration_date']); ?></td>
                                 <td>
-                                    <a href="?action=delete&id=<?php echo $reg['reg_id']; ?>" 
-                                       class="btn btn-sm btn-danger"
-                                       onclick="return confirm('Are you sure you want to delete this registration?')">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </a>
+                                    <div class="btn-group">
+                                        <?php if ($reg['status'] === 'waitlisted'): ?>
+                                            <a href="?action=confirm&id=<?php echo $reg['reg_id']; ?>" 
+                                               class="btn btn-sm btn-success"
+                                               onclick="return confirm('Confirm this registration?')">
+                                                <i class="bi bi-check-circle"></i> Confirm
+                                            </a>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($reg['status'] !== 'cancelled'): ?>
+                                            <a href="?action=cancel&id=<?php echo $reg['reg_id']; ?>" 
+                                               class="btn btn-sm btn-warning"
+                                               onclick="return confirm('Cancel this registration?')">
+                                                <i class="bi bi-x-circle"></i> Cancel
+                                            </a>
+                                        <?php endif; ?>
+                                        
+                                        <a href="?action=delete&id=<?php echo $reg['reg_id']; ?>" 
+                                           class="btn btn-sm btn-danger"
+                                           onclick="return confirm('Are you sure you want to delete this registration?')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -221,6 +285,14 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             <?php endif; ?>
         <?php endif; ?>
     </div>
+
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">&copy; <?php echo date('Y'); ?> Event Registration System. All rights reserved.</p>
+            <p class="mb-0">Monica Kabwe</p>
+            <p class="mb-0">SIN: 2403443685</p>
+        </div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

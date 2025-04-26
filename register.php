@@ -74,8 +74,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Regular registration
-            $stmt = $conn->prepare("INSERT INTO registrations (event_id, name, email, phone) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("isss", $event_id, $name, $email, $phone);
+            $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+            
+            // Check if user_id column exists
+            $result = $conn->query("SHOW COLUMNS FROM registrations LIKE 'user_id'");
+            if ($result->num_rows > 0) {
+                // Column exists, use it
+                $stmt = $conn->prepare("INSERT INTO registrations (event_id, user_id, name, email, phone) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("iisss", $event_id, $user_id, $name, $email, $phone);
+            } else {
+                // Column doesn't exist, skip it
+                $stmt = $conn->prepare("INSERT INTO registrations (event_id, name, email, phone) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("isss", $event_id, $name, $email, $phone);
+            }
             
             if ($stmt->execute()) {
                 $success = true;
@@ -202,6 +213,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <footer class="bg-light py-4 mt-5">
         <div class="container text-center">
             <p class="mb-0">&copy; <?php echo date('Y'); ?> Event Registration System. All rights reserved.</p>
+            <p class="mb-0">Monica Kabwe</p>
+            <p class="mb-0">SIN: 2403443685</p>
         </div>
     </footer>
 
